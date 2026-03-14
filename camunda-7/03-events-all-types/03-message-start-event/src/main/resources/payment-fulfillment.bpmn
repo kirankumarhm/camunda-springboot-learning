@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  id="Definitions_PaymentFulfillment"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+
+  <bpmn:message id="Msg_PaymentConfirmed" name="Msg_PaymentConfirmed" />
+
+  <bpmn:process id="payment-fulfillment-process" name="Payment Notification Fulfillment" isExecutable="true" camunda:historyTimeToLive="P5D">
+
+    <bpmn:startEvent id="StartEvent_PaymentConfirmed" name="Payment Confirmed">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+      <bpmn:messageEventDefinition messageRef="Msg_PaymentConfirmed" />
+    </bpmn:startEvent>
+
+    <bpmn:serviceTask id="Task_InitiateFulfillment" name="Initiate Order Fulfillment" camunda:delegateExpression="${paymentFulfillmentDelegate}">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:endEvent id="EndEvent_FulfillmentInitiated" name="Fulfillment Initiated">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_PaymentConfirmed" targetRef="Task_InitiateFulfillment" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_InitiateFulfillment" targetRef="EndEvent_FulfillmentInitiated" />
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="payment-fulfillment-process">
+      <bpmndi:BPMNShape id="StartEvent_PaymentConfirmed_di" bpmnElement="StartEvent_PaymentConfirmed">
+        <dc:Bounds x="152" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="125" y="145" width="90" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_InitiateFulfillment_di" bpmnElement="Task_InitiateFulfillment">
+        <dc:Bounds x="240" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_FulfillmentInitiated_di" bpmnElement="EndEvent_FulfillmentInitiated">
+        <dc:Bounds x="392" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="365" y="145" width="90" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="188" y="120" />
+        <di:waypoint x="240" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="340" y="120" />
+        <di:waypoint x="392" y="120" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
