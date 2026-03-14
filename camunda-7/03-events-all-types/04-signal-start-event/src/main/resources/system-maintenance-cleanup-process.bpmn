@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  id="Definitions_Maintenance"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+
+  <bpmn:signal id="Signal_SystemMaintenanceActivated" name="SystemMaintenanceActivated" />
+
+  <bpmn:process id="system-maintenance-cleanup-process" name="System Maintenance Cleanup Process"
+                isExecutable="true" camunda:historyTimeToLive="P5D">
+
+    <bpmn:startEvent id="StartEvent_Maintenance" name="Maintenance Mode Activated">
+      <bpmn:outgoing>Flow_Maint_1</bpmn:outgoing>
+      <bpmn:signalEventDefinition signalRef="Signal_SystemMaintenanceActivated" />
+    </bpmn:startEvent>
+
+    <bpmn:serviceTask id="Task_PerformCleanup" name="Perform System Cleanup"
+                      camunda:delegateExpression="${systemMaintenanceCleanupDelegate}">
+      <bpmn:incoming>Flow_Maint_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_Maint_2</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_SuspendHealthChecks" name="Suspend Health Checks"
+                      camunda:delegateExpression="${suspendHealthChecksDelegate}">
+      <bpmn:incoming>Flow_Maint_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_Maint_3</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:endEvent id="EndEvent_Maintenance" name="Maintenance Cleanup Complete">
+      <bpmn:incoming>Flow_Maint_3</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="Flow_Maint_1" sourceRef="StartEvent_Maintenance" targetRef="Task_PerformCleanup" />
+    <bpmn:sequenceFlow id="Flow_Maint_2" sourceRef="Task_PerformCleanup" targetRef="Task_SuspendHealthChecks" />
+    <bpmn:sequenceFlow id="Flow_Maint_3" sourceRef="Task_SuspendHealthChecks" targetRef="EndEvent_Maintenance" />
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_Maintenance">
+    <bpmndi:BPMNPlane id="BPMNPlane_Maintenance" bpmnElement="system-maintenance-cleanup-process">
+      <bpmndi:BPMNShape id="StartEvent_Maintenance_di" bpmnElement="StartEvent_Maintenance">
+        <dc:Bounds x="152" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="126" y="145" width="88" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_PerformCleanup_di" bpmnElement="Task_PerformCleanup">
+        <dc:Bounds x="240" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SuspendHealthChecks_di" bpmnElement="Task_SuspendHealthChecks">
+        <dc:Bounds x="400" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Maintenance_di" bpmnElement="EndEvent_Maintenance">
+        <dc:Bounds x="562" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="536" y="145" width="88" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_Maint_1_di" bpmnElement="Flow_Maint_1">
+        <di:waypoint x="188" y="120" />
+        <di:waypoint x="240" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Maint_2_di" bpmnElement="Flow_Maint_2">
+        <di:waypoint x="340" y="120" />
+        <di:waypoint x="400" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Maint_3_di" bpmnElement="Flow_Maint_3">
+        <di:waypoint x="500" y="120" />
+        <di:waypoint x="562" y="120" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
