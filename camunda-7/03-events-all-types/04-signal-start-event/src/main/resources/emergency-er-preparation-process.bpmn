@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SIGNAL RECEIVER PROCESS — Emergency ER Preparation (Use Case 1)
+  ================================================================
+  This process demonstrates HOW a signal is RECEIVED via a Signal Start Event.
+
+  FLOW: [📡 Signal Start] → [⚙️ Prepare ER] → [📟 Notify Surgeon] → [● End]
+
+  HOW IT WORKS:
+    1. At deployment time, Camunda reads this BPMN and sees a Signal Start Event
+       listening to "EmergencyAlert". It creates a subscription in the database:
+         INSERT INTO ACT_RU_EVENT_SUBSCR (EVENT_TYPE_, EVENT_NAME_, PROC_DEF_ID_)
+         VALUES ('signal', 'EmergencyAlert', 'emergency-er-preparation-process:1:xxx')
+
+    2. When someone broadcasts "EmergencyAlert" (via REST API or Signal End Event),
+       Camunda finds this subscription and automatically creates a new process instance.
+
+    3. The process instance executes two service tasks in sequence:
+       a) Task_PrepareEr → calls erPreparationDelegate.execute()
+       b) Task_NotifyOnCallSurgeon → calls notifyOnCallSurgeonDelegate.execute()
+
+    4. The process completes at EndEvent_ErPrep.
+
+  BPMN-TO-JAVA CONNECTION (delegateExpression):
+    ┌──────────────────────────────────────────────────────────────────────────┐
+    │ BPMN XML                              │ Java / Spring                   │
+    ├───────────────────────────────────────┼─────────────────────────────────┤
+    │ camunda:delegateExpression=            │ @Component("erPreparationDele  │
+    │   "${erPreparationDelegate}"           │   gate")                       │
+    │                                        │ public class ErPreparation     │
+    │                                        │   Delegate implements          │
+    │                                        │   JavaDelegate {               │
+    │                                        │   void execute(Delegate        │
+    │                                        │     Execution execution)       │
+    │                                        │ }                              │
+    ├───────────────────────────────────────┼─────────────────────────────────┤
+    │ The ${...} is a Spring EL expression. │ Spring resolves the bean name   │
+    │ Camunda evaluates it at runtime.      │ and returns the singleton.      │
+    └───────────────────────────────────────┴─────────────────────────────────┘
+
+  WHY TWO SERVICE TASKS (back tasks)?
+    Real-world processes don't just react to a signal and stop. After the initial
+    reaction (prepare ER), there's follow-up work (notify surgeon). This pattern
+    shows that a Signal Start Event is just the trigger — the process continues
+    with as many tasks as needed.
+-->
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  id="Definitions_ErPrep"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+
+  <!--
+    SIGNAL DEFINITION
+    name="EmergencyAlert" — MUST match the sender's signal name exactly (case-sensitive).
+    The id is different from the sender's id (Signal_EmergencyAlert_ErPrep vs Signal_EmergencyAlert_Broadcaster)
+    but that's fine — only the "name" attribute matters for matching.
+  -->
+  <bpmn:signal id="Signal_EmergencyAlert_ErPrep" name="EmergencyAlert" />
+
+  <bpmn:process id="emergency-er-preparation-process" name="Emergency ER Preparation Process"
+                isExecutable="true" camunda:historyTimeToLive="P5D">
+
+    <!--
+      SIGNAL START EVENT — This is the core concept of this learning module.
+      Unlike a None Start Event (which requires manual/REST trigger), a Signal Start Event
+      is triggered AUTOMATICALLY when the matching signal is broadcast.
+
+      The <bpmn:signalEventDefinition signalRef="Signal_EmergencyAlert_ErPrep" /> links
+      this start event to the signal definition above. At deployment, Camunda registers
+      this as a subscription. At runtime, when "EmergencyAlert" is broadcast, Camunda
+      creates a new instance of this process starting from this event.
+    -->
+    <bpmn:startEvent id="StartEvent_ErPrep" name="Emergency Alert Received">
+      <bpmn:outgoing>Flow_ErPrep_1</bpmn:outgoing>
+      <bpmn:signalEventDefinition signalRef="Signal_EmergencyAlert_ErPrep" />
+    </bpmn:startEvent>
+
+    <!--
+      SERVICE TASK 1 — Primary reaction to the signal.
+      Camunda resolves "${erPreparationDelegate}" → finds the Spring bean → calls execute().
+      The delegate reads process variables (severity, location) via execution.getVariable().
+    -->
+    <bpmn:serviceTask id="Task_PrepareEr" name="Prepare ER for Incoming Patient"
+                      camunda:delegateExpression="${erPreparationDelegate}">
+      <bpmn:incoming>Flow_ErPrep_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_ErPrep_2</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!--
+      SERVICE TASK 2 — Downstream/follow-up task (the "back task").
+      Runs after the ER is prepared. In a real hospital, you'd page the surgeon
+      only after confirming the trauma bay is ready.
+    -->
+    <bpmn:serviceTask id="Task_NotifyOnCallSurgeon" name="Notify On-Call Surgeon"
+                      camunda:delegateExpression="${notifyOnCallSurgeonDelegate}">
+      <bpmn:incoming>Flow_ErPrep_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_ErPrep_3</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:endEvent id="EndEvent_ErPrep" name="ER Preparation Complete">
+      <bpmn:incoming>Flow_ErPrep_3</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- SEQUENCE FLOWS — execution order: Start → Prepare ER → Notify Surgeon → End -->
+    <bpmn:sequenceFlow id="Flow_ErPrep_1" sourceRef="StartEvent_ErPrep" targetRef="Task_PrepareEr" />
+    <bpmn:sequenceFlow id="Flow_ErPrep_2" sourceRef="Task_PrepareEr" targetRef="Task_NotifyOnCallSurgeon" />
+    <bpmn:sequenceFlow id="Flow_ErPrep_3" sourceRef="Task_NotifyOnCallSurgeon" targetRef="EndEvent_ErPrep" />
+  </bpmn:process>
+
+  <!-- DIAGRAM LAYOUT — visual positioning only, does not affect execution -->
+  <bpmndi:BPMNDiagram id="BPMNDiagram_ErPrep">
+    <bpmndi:BPMNPlane id="BPMNPlane_ErPrep" bpmnElement="emergency-er-preparation-process">
+      <bpmndi:BPMNShape id="StartEvent_ErPrep_di" bpmnElement="StartEvent_ErPrep">
+        <dc:Bounds x="152" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="126" y="145" width="88" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_PrepareEr_di" bpmnElement="Task_PrepareEr">
+        <dc:Bounds x="240" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_NotifyOnCallSurgeon_di" bpmnElement="Task_NotifyOnCallSurgeon">
+        <dc:Bounds x="400" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_ErPrep_di" bpmnElement="EndEvent_ErPrep">
+        <dc:Bounds x="562" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="536" y="145" width="88" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_ErPrep_1_di" bpmnElement="Flow_ErPrep_1">
+        <di:waypoint x="188" y="120" />
+        <di:waypoint x="240" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ErPrep_2_di" bpmnElement="Flow_ErPrep_2">
+        <di:waypoint x="340" y="120" />
+        <di:waypoint x="400" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ErPrep_3_di" bpmnElement="Flow_ErPrep_3">
+        <di:waypoint x="500" y="120" />
+        <di:waypoint x="562" y="120" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
