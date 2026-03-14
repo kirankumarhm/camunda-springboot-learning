@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_Batch" targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="batch-invoice-process" name="Batch Invoice Generation" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_Batch" name="Batch Triggered">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="Task_FetchData" name="Fetch Customer Data" camunda:delegateExpression="${fetchCustomerDataDelegate}">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Task_GenerateInvoice" name="Generate Invoice" camunda:delegateExpression="${generateInvoiceDelegate}">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Task_SendInvoice" name="Send Invoice Email" camunda:delegateExpression="${sendInvoiceDelegate}">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="EndEvent_Batch" name="Invoice Sent">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_Batch" targetRef="Task_FetchData" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_FetchData" targetRef="Task_GenerateInvoice" />
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="Task_GenerateInvoice" targetRef="Task_SendInvoice" />
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="Task_SendInvoice" targetRef="EndEvent_Batch" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_Batch">
+    <bpmndi:BPMNPlane id="BPMNPlane_Batch" bpmnElement="batch-invoice-process">
+      <bpmndi:BPMNShape id="StartEvent_Batch_di" bpmnElement="StartEvent_Batch">
+        <dc:Bounds x="152" y="102" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_FetchData_di" bpmnElement="Task_FetchData">
+        <dc:Bounds x="240" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_GenerateInvoice_di" bpmnElement="Task_GenerateInvoice">
+        <dc:Bounds x="390" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SendInvoice_di" bpmnElement="Task_SendInvoice">
+        <dc:Bounds x="540" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Batch_di" bpmnElement="EndEvent_Batch">
+        <dc:Bounds x="692" y="102" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="188" y="120" />
+        <di:waypoint x="240" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="340" y="120" />
+        <di:waypoint x="390" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
+        <di:waypoint x="490" y="120" />
+        <di:waypoint x="540" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4">
+        <di:waypoint x="640" y="120" />
+        <di:waypoint x="692" y="120" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
