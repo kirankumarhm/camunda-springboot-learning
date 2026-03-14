@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  id="Definitions_SecurityLockdown"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+
+  <bpmn:signal id="Signal_EmergencyAlert_Security" name="EmergencyAlert" />
+
+  <bpmn:process id="emergency-security-lockdown-process" name="Emergency Security Lockdown Process"
+                isExecutable="true" camunda:historyTimeToLive="P5D">
+
+    <bpmn:startEvent id="StartEvent_SecurityLockdown" name="Emergency Alert Received">
+      <bpmn:outgoing>Flow_Security_1</bpmn:outgoing>
+      <bpmn:signalEventDefinition signalRef="Signal_EmergencyAlert_Security" />
+    </bpmn:startEvent>
+
+    <bpmn:serviceTask id="Task_InitiateLockdown" name="Initiate Security Lockdown"
+                      camunda:delegateExpression="${securityLockdownDelegate}">
+      <bpmn:incoming>Flow_Security_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_Security_2</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_LogSecurityIncident" name="Log Security Incident"
+                      camunda:delegateExpression="${logSecurityIncidentDelegate}">
+      <bpmn:incoming>Flow_Security_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_Security_3</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:endEvent id="EndEvent_SecurityLockdown" name="Security Lockdown Activated">
+      <bpmn:incoming>Flow_Security_3</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="Flow_Security_1" sourceRef="StartEvent_SecurityLockdown" targetRef="Task_InitiateLockdown" />
+    <bpmn:sequenceFlow id="Flow_Security_2" sourceRef="Task_InitiateLockdown" targetRef="Task_LogSecurityIncident" />
+    <bpmn:sequenceFlow id="Flow_Security_3" sourceRef="Task_LogSecurityIncident" targetRef="EndEvent_SecurityLockdown" />
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_SecurityLockdown">
+    <bpmndi:BPMNPlane id="BPMNPlane_SecurityLockdown" bpmnElement="emergency-security-lockdown-process">
+      <bpmndi:BPMNShape id="StartEvent_SecurityLockdown_di" bpmnElement="StartEvent_SecurityLockdown">
+        <dc:Bounds x="152" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="126" y="145" width="88" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_InitiateLockdown_di" bpmnElement="Task_InitiateLockdown">
+        <dc:Bounds x="240" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_LogSecurityIncident_di" bpmnElement="Task_LogSecurityIncident">
+        <dc:Bounds x="400" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_SecurityLockdown_di" bpmnElement="EndEvent_SecurityLockdown">
+        <dc:Bounds x="562" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="536" y="145" width="88" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_Security_1_di" bpmnElement="Flow_Security_1">
+        <di:waypoint x="188" y="120" />
+        <di:waypoint x="240" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Security_2_di" bpmnElement="Flow_Security_2">
+        <di:waypoint x="340" y="120" />
+        <di:waypoint x="400" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Security_3_di" bpmnElement="Flow_Security_3">
+        <di:waypoint x="500" y="120" />
+        <di:waypoint x="562" y="120" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
