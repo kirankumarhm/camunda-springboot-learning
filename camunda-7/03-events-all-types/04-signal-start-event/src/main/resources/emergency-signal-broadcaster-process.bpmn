@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SIGNAL BROADCASTER PROCESS (The "Front Task" / Sender)
+  ======================================================
+  This process demonstrates HOW a signal is SENT from within a BPMN process.
+
+  FLOW: [● None Start] → [⚙️ Validate Emergency] → [📡 Signal End Event]
+
+  HOW IT WORKS:
+    1. Someone starts this process via REST API:
+       POST /engine-rest/process-definition/key/emergency-signal-broadcaster-process/start
+       with variables: { "severity": "CRITICAL", "location": "Wing B" }
+
+    2. Camunda creates a process instance and executes Task_ValidateEmergency.
+       The BPMN says: camunda:delegateExpression="${validateEmergencyDelegate}"
+       Camunda looks up the Spring bean named "validateEmergencyDelegate" and calls its execute() method.
+
+    3. When the process reaches EndEvent_BroadcastSignal (a Signal End Event),
+       Camunda broadcasts the signal named "EmergencyAlert" to the entire engine.
+       This is equivalent to calling: POST /engine-rest/signal {"name": "EmergencyAlert"}
+
+    4. All processes with a Signal Start Event listening to "EmergencyAlert" are started:
+       - emergency-er-preparation-process
+       - emergency-security-lockdown-process
+       - emergency-admin-notification-process
+
+  BPMN-TO-JAVA MAPPING:
+    ┌─────────────────────────────────────────────────────────────────────────┐
+    │ BPMN Element                    │ Java / Spring Boot                   │
+    ├─────────────────────────────────┼──────────────────────────────────────┤
+    │ <bpmn:signal name="..."/>       │ Signal name (string match at runtime)│
+    │ <bpmn:startEvent>               │ No Java code — engine handles it     │
+    │ camunda:delegateExpression=     │ @Component("validateEmergencyDele...│
+    │   "${validateEmergencyDelegate}"│   implements JavaDelegate            │
+    │ <bpmn:signalEventDefinition>    │ Engine broadcasts signal internally  │
+    │   in endEvent                   │   (no Java code needed)              │
+    └─────────────────────────────────┴──────────────────────────────────────┘
+-->
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  id="Definitions_EmergencyBroadcaster"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+
+  <!--
+    SIGNAL DEFINITION (global, outside any process)
+    The "name" attribute is the KEY — this is what Camunda uses to match
+    senders and receivers. The "id" is only used for internal XML references.
+    All BPMNs that want to send or receive "EmergencyAlert" must use the SAME name.
+  -->
+  <bpmn:signal id="Signal_EmergencyAlert_Broadcaster" name="EmergencyAlert" />
+
+  <!--
+    PROCESS DEFINITION
+    - id: Used in REST API calls (e.g., /process-definition/key/emergency-signal-broadcaster-process/start)
+    - isExecutable="true": Tells Camunda this process can be run (not just a documentation diagram)
+    - camunda:historyTimeToLive="P5D": History data is kept for 5 days before cleanup
+  -->
+  <bpmn:process id="emergency-signal-broadcaster-process" name="Emergency Signal Broadcaster Process"
+                isExecutable="true" camunda:historyTimeToLive="P5D">
+
+    <!--
+      NONE START EVENT (no trigger — started manually via REST API or Tasklist)
+      This is NOT a Signal Start Event. It's a plain start event.
+      The process is started by an external call, not by a signal.
+    -->
+    <bpmn:startEvent id="StartEvent_Broadcaster" name="Emergency Reported">
+      <bpmn:outgoing>Flow_Broadcaster_1</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <!--
+      SERVICE TASK — The "front task" that runs BEFORE the signal is broadcast.
+      camunda:delegateExpression="${validateEmergencyDelegate}" means:
+        1. Camunda asks Spring: "Give me the bean named 'validateEmergencyDelegate'"
+        2. Spring returns the ValidateEmergencyDelegate instance (annotated with @Component("validateEmergencyDelegate"))
+        3. Camunda calls its execute(DelegateExecution) method
+        4. The delegate can read/write process variables via the DelegateExecution object
+    -->
+    <bpmn:serviceTask id="Task_ValidateEmergency" name="Validate Emergency Details"
+                      camunda:delegateExpression="${validateEmergencyDelegate}">
+      <bpmn:incoming>Flow_Broadcaster_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_Broadcaster_2</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!--
+      SIGNAL END EVENT — This is where the signal is BROADCAST.
+      When the process reaches this end event, Camunda:
+        1. Reads the signalRef → finds Signal_EmergencyAlert_Broadcaster → name="EmergencyAlert"
+        2. Queries ACT_RU_EVENT_SUBSCR for all subscriptions to "EmergencyAlert"
+        3. Creates a new process instance for EACH subscription (3 in our case)
+        4. Completes this sender process instance
+
+      IMPORTANT: The Signal End Event does NOT pass process variables to receiver processes.
+      If you need to pass data, use the REST API approach with "variables" in the payload.
+    -->
+    <bpmn:endEvent id="EndEvent_BroadcastSignal" name="Broadcast Emergency Alert">
+      <bpmn:incoming>Flow_Broadcaster_2</bpmn:incoming>
+      <bpmn:signalEventDefinition signalRef="Signal_EmergencyAlert_Broadcaster" />
+    </bpmn:endEvent>
+
+    <!-- SEQUENCE FLOWS — define the execution order (arrows in the diagram) -->
+    <bpmn:sequenceFlow id="Flow_Broadcaster_1" sourceRef="StartEvent_Broadcaster" targetRef="Task_ValidateEmergency" />
+    <bpmn:sequenceFlow id="Flow_Broadcaster_2" sourceRef="Task_ValidateEmergency" targetRef="EndEvent_BroadcastSignal" />
+  </bpmn:process>
+
+  <!-- DIAGRAM LAYOUT — visual positioning only, does not affect execution -->
+  <bpmndi:BPMNDiagram id="BPMNDiagram_EmergencyBroadcaster">
+    <bpmndi:BPMNPlane id="BPMNPlane_EmergencyBroadcaster" bpmnElement="emergency-signal-broadcaster-process">
+      <bpmndi:BPMNShape id="StartEvent_Broadcaster_di" bpmnElement="StartEvent_Broadcaster">
+        <dc:Bounds x="152" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="126" y="145" width="88" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ValidateEmergency_di" bpmnElement="Task_ValidateEmergency">
+        <dc:Bounds x="240" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_BroadcastSignal_di" bpmnElement="EndEvent_BroadcastSignal">
+        <dc:Bounds x="392" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="366" y="145" width="88" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_Broadcaster_1_di" bpmnElement="Flow_Broadcaster_1">
+        <di:waypoint x="188" y="120" />
+        <di:waypoint x="240" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Broadcaster_2_di" bpmnElement="Flow_Broadcaster_2">
+        <di:waypoint x="340" y="120" />
+        <di:waypoint x="392" y="120" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
