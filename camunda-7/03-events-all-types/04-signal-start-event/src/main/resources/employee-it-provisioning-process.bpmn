@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  id="Definitions_ItProvisioning"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+
+  <bpmn:signal id="Signal_EmployeeOnboarded" name="EmployeeOnboarded" />
+
+  <bpmn:process id="employee-it-provisioning-process" name="Employee IT Provisioning Process"
+                isExecutable="true" camunda:historyTimeToLive="P5D">
+
+    <bpmn:startEvent id="StartEvent_ItProvisioning" name="Employee Onboarded">
+      <bpmn:outgoing>Flow_IT_1</bpmn:outgoing>
+      <bpmn:signalEventDefinition signalRef="Signal_EmployeeOnboarded" />
+    </bpmn:startEvent>
+
+    <bpmn:serviceTask id="Task_ProvisionItAccess" name="Provision IT Access"
+                      camunda:delegateExpression="${employeeItProvisioningDelegate}">
+      <bpmn:incoming>Flow_IT_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_IT_2</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_SendWelcomeEmail" name="Send Welcome Email"
+                      camunda:delegateExpression="${sendWelcomeEmailDelegate}">
+      <bpmn:incoming>Flow_IT_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_IT_3</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:endEvent id="EndEvent_ItProvisioning" name="IT Provisioning Complete">
+      <bpmn:incoming>Flow_IT_3</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="Flow_IT_1" sourceRef="StartEvent_ItProvisioning" targetRef="Task_ProvisionItAccess" />
+    <bpmn:sequenceFlow id="Flow_IT_2" sourceRef="Task_ProvisionItAccess" targetRef="Task_SendWelcomeEmail" />
+    <bpmn:sequenceFlow id="Flow_IT_3" sourceRef="Task_SendWelcomeEmail" targetRef="EndEvent_ItProvisioning" />
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_ItProvisioning">
+    <bpmndi:BPMNPlane id="BPMNPlane_ItProvisioning" bpmnElement="employee-it-provisioning-process">
+      <bpmndi:BPMNShape id="StartEvent_ItProvisioning_di" bpmnElement="StartEvent_ItProvisioning">
+        <dc:Bounds x="152" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="126" y="145" width="88" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ProvisionItAccess_di" bpmnElement="Task_ProvisionItAccess">
+        <dc:Bounds x="240" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SendWelcomeEmail_di" bpmnElement="Task_SendWelcomeEmail">
+        <dc:Bounds x="400" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_ItProvisioning_di" bpmnElement="EndEvent_ItProvisioning">
+        <dc:Bounds x="562" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="536" y="145" width="88" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_IT_1_di" bpmnElement="Flow_IT_1">
+        <di:waypoint x="188" y="120" />
+        <di:waypoint x="240" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_IT_2_di" bpmnElement="Flow_IT_2">
+        <di:waypoint x="340" y="120" />
+        <di:waypoint x="400" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_IT_3_di" bpmnElement="Flow_IT_3">
+        <di:waypoint x="500" y="120" />
+        <di:waypoint x="562" y="120" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
