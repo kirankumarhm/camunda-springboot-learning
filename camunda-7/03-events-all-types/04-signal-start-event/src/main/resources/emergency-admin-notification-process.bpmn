@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  id="Definitions_AdminNotification"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+
+  <bpmn:signal id="Signal_EmergencyAlert_Admin" name="EmergencyAlert" />
+
+  <bpmn:process id="emergency-admin-notification-process" name="Emergency Admin Notification Process"
+                isExecutable="true" camunda:historyTimeToLive="P5D">
+
+    <bpmn:startEvent id="StartEvent_AdminNotification" name="Emergency Alert Received">
+      <bpmn:outgoing>Flow_Admin_1</bpmn:outgoing>
+      <bpmn:signalEventDefinition signalRef="Signal_EmergencyAlert_Admin" />
+    </bpmn:startEvent>
+
+    <bpmn:serviceTask id="Task_NotifyAdministration" name="Notify Hospital Administration"
+                      camunda:delegateExpression="${adminNotificationDelegate}">
+      <bpmn:incoming>Flow_Admin_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_Admin_2</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_UpdateIncidentDashboard" name="Update Incident Dashboard"
+                      camunda:delegateExpression="${updateIncidentDashboardDelegate}">
+      <bpmn:incoming>Flow_Admin_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_Admin_3</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:endEvent id="EndEvent_AdminNotification" name="Administration Notified">
+      <bpmn:incoming>Flow_Admin_3</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="Flow_Admin_1" sourceRef="StartEvent_AdminNotification" targetRef="Task_NotifyAdministration" />
+    <bpmn:sequenceFlow id="Flow_Admin_2" sourceRef="Task_NotifyAdministration" targetRef="Task_UpdateIncidentDashboard" />
+    <bpmn:sequenceFlow id="Flow_Admin_3" sourceRef="Task_UpdateIncidentDashboard" targetRef="EndEvent_AdminNotification" />
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_AdminNotification">
+    <bpmndi:BPMNPlane id="BPMNPlane_AdminNotification" bpmnElement="emergency-admin-notification-process">
+      <bpmndi:BPMNShape id="StartEvent_AdminNotification_di" bpmnElement="StartEvent_AdminNotification">
+        <dc:Bounds x="152" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="126" y="145" width="88" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_NotifyAdministration_di" bpmnElement="Task_NotifyAdministration">
+        <dc:Bounds x="240" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_UpdateIncidentDashboard_di" bpmnElement="Task_UpdateIncidentDashboard">
+        <dc:Bounds x="400" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_AdminNotification_di" bpmnElement="EndEvent_AdminNotification">
+        <dc:Bounds x="562" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="536" y="145" width="88" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_Admin_1_di" bpmnElement="Flow_Admin_1">
+        <di:waypoint x="188" y="120" />
+        <di:waypoint x="240" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Admin_2_di" bpmnElement="Flow_Admin_2">
+        <di:waypoint x="340" y="120" />
+        <di:waypoint x="400" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Admin_3_di" bpmnElement="Flow_Admin_3">
+        <di:waypoint x="500" y="120" />
+        <di:waypoint x="562" y="120" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
