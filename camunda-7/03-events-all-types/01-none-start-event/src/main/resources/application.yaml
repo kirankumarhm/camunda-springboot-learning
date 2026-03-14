@@ -1,0 +1,25 @@
+spring:
+  datasource:
+    url: jdbc:h2:file:./camunda-h2-database
+
+camunda:
+  bpm:
+    admin-user:
+      id: demo
+      password: demo
+    filter:
+      create: All tasks
+    generic-properties:
+      properties:
+        historyTimeToLive: P5D
+    job-execution:
+      enabled: true
+      deployment-aware: false
+    metrics:
+      enabled: true
+    webapp:
+      index-redirect-enabled: true
+
+server:
+  port: 8080
+  host: 0.0.0.0
