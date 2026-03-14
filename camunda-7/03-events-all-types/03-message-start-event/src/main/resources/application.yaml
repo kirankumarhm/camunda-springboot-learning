@@ -1,0 +1,34 @@
+spring:
+  datasource:
+    url: jdbc:h2:file:./camunda-h2-database
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: camunda-message-start-event
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      missing-topics-fatal: false
+
+camunda:
+  bpm:
+    admin-user:
+      id: demo
+      password: demo
+    filter:
+      create: All tasks
+    generic-properties:
+      properties:
+        historyTimeToLive: P5D
+    job-execution:
+      enabled: true
+      deployment-aware: false
+    metrics:
+      enabled: true
+    webapp:
+      index-redirect-enabled: true
+
+server:
+  port: 8080
+  host: 0.0.0.0
