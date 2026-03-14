@@ -1,0 +1,159 @@
+# =============================================================================
+# APPLICATION CONFIGURATION
+# =============================================================================
+# This file configures THREE things:
+#   1. Spring Boot (datasource, H2 console, logging)
+#   2. Camunda Process Engine (history, admin user, job executor)
+#   3. Embedded Web Server (port)
+#
+# HOW CAMUNDA READS THIS:
+#   Spring Boot auto-configuration reads these properties at startup and uses them
+#   to configure the Camunda Process Engine. The "camunda.bpm.*" properties map
+#   directly to Camunda's ProcessEngineConfiguration class.
+# =============================================================================
+
+spring:
+  # Application name — appears in logs and Spring Boot Actuator endpoints
+  application:
+    name: signal-start-event
+
+  # ---------------------------------------------------------------------------
+  # DATABASE CONFIGURATION
+  # ---------------------------------------------------------------------------
+  # Camunda stores ALL process data in this database:
+  #   - ACT_RE_* tables: Repository (deployed process definitions, BPMN XML)
+  #   - ACT_RU_* tables: Runtime (running process instances, active tasks, variables)
+  #   - ACT_HI_* tables: History (completed instances, audit trail)
+  #   - ACT_GE_* tables: General (properties, byte arrays)
+  #
+  # When a signal is broadcast, Camunda:
+  #   1. Queries ACT_RU_EVENT_SUBSCR to find all processes subscribed to that signal name
+  #   2. Creates new rows in ACT_RU_EXECUTION for each started process instance
+  #   3. Executes the service tasks (calls your Java delegates)
+  #   4. Moves completed data to ACT_HI_* tables
+  datasource:
+    url: jdbc:h2:file:./camunda-h2-database;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    #     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^
+    #     |                                 |                 |
+    #     File-based H2 (persists data)     Keep DB open      Don't close on JVM exit
+    #     Creates: ./camunda-h2-database.mv.db               (allows graceful shutdown)
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  # H2 web console — browse the Camunda database tables directly
+  # Open: http://localhost:8080/h2-console
+  # JDBC URL: jdbc:h2:file:./camunda-h2-database
+  # Try: SELECT * FROM ACT_RU_EVENT_SUBSCR  → shows signal subscriptions
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+# =============================================================================
+# CAMUNDA PROCESS ENGINE CONFIGURATION
+# =============================================================================
+# These properties configure the embedded Camunda 7 Process Engine.
+# The engine is the core runtime that:
+#   - Deploys BPMN process definitions
+#   - Manages signal/message subscriptions
+#   - Executes process instances
+#   - Calls Java delegates when service tasks are reached
+#   - Records history
+camunda:
+  bpm:
+    # -------------------------------------------------------------------------
+    # ADMIN USER
+    # -------------------------------------------------------------------------
+    # Created automatically on first startup. Used to log into:
+    #   - Cockpit:  http://localhost:8080/camunda/app/cockpit/  (monitor processes)
+    #   - Tasklist: http://localhost:8080/camunda/app/tasklist/  (user tasks)
+    #   - Admin:    http://localhost:8080/camunda/app/admin/     (manage users)
+    admin-user:
+      id: demo
+      password: demo
+      first-name: Demo
+      last-name: User
+
+    # Creates a default task filter in Tasklist so all tasks are visible
+    filter:
+      create: All tasks
+
+    # -------------------------------------------------------------------------
+    # HISTORY LEVEL
+    # -------------------------------------------------------------------------
+    # Controls how much data Camunda records in ACT_HI_* tables.
+    # Options: none → activity → audit → full
+    #
+    #   none     → No history at all (not recommended)
+    #   activity → Only process instance start/end and activity instance start/end
+    #   audit    → activity + variable updates + form property values (DEFAULT)
+    #   full     → audit + all variable value changes including transient updates
+    #
+    # We use "full" for learning so you can inspect every variable change in Cockpit.
+    # In production, "audit" is usually sufficient.
+    history-level: full
+
+    # Disable authorization checks — simplifies the learning setup.
+    # In production, you'd enable this to control who can start/view/modify processes.
+    authorization:
+      enabled: false
+
+    # -------------------------------------------------------------------------
+    # GENERIC ENGINE PROPERTIES
+    # -------------------------------------------------------------------------
+    generic-properties:
+      properties:
+        # Default historyTimeToLive for process definitions that don't specify it in BPMN.
+        # After this period, history data is eligible for cleanup.
+        # Our BPMNs also set camunda:historyTimeToLive="P5D" at the process level.
+        historyTimeToLive: P5D
+
+        # When a BPMN Error is thrown but not caught by any error boundary event,
+        # this setting makes it surface as a Java exception instead of silently failing.
+        enableExceptionsAfterUnhandledBpmnError: true
+
+    # -------------------------------------------------------------------------
+    # JOB EXECUTOR
+    # -------------------------------------------------------------------------
+    # The job executor handles asynchronous work (async tasks, timers, retries).
+    # Our signal example is synchronous (all tasks execute immediately), but the
+    # job executor is enabled by default and needed for production scenarios.
+    #
+    # deployment-aware: false → the job executor processes jobs from ALL deployments,
+    # not just the ones deployed by this application. Set to true in multi-app setups.
+    job-execution:
+      enabled: true
+      deployment-aware: false
+
+    # Disable metrics collection — reduces database writes in a learning project.
+    # In production, enable this for monitoring process engine performance.
+    metrics:
+      enabled: false
+
+    # Redirect http://localhost:8080/ to the Camunda webapp
+    webapp:
+      index-redirect-enabled: true
+
+# =============================================================================
+# EMBEDDED WEB SERVER
+# =============================================================================
+server:
+  port: 8080
+
+# =============================================================================
+# LOGGING CONFIGURATION
+# =============================================================================
+# Controls what appears in the console output.
+#   - com.example.event: INFO  → shows our delegate log messages
+#   - org.camunda.bpm: WARN    → hides verbose Camunda engine logs
+#   - org.springframework: WARN → hides verbose Spring Boot startup logs
+#
+# To see Camunda engine internals (useful for debugging signal subscriptions):
+#   Change org.camunda.bpm to DEBUG
+logging:
+  level:
+    root: INFO
+    com.example.event: INFO
+    org.camunda.bpm: WARN
+    org.springframework: WARN
