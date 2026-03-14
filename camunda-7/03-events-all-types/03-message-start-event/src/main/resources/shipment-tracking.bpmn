@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  id="Definitions_ShipmentTracking"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+
+  <bpmn:message id="Msg_ShipmentStatusUpdated" name="Msg_ShipmentStatusUpdated" />
+
+  <bpmn:process id="shipment-tracking-process" name="Shipment Tracking Update" isExecutable="true" camunda:historyTimeToLive="P5D">
+
+    <bpmn:startEvent id="StartEvent_ShipmentUpdated" name="Shipment Status Updated">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+      <bpmn:messageEventDefinition messageRef="Msg_ShipmentStatusUpdated" />
+    </bpmn:startEvent>
+
+    <bpmn:serviceTask id="Task_ProcessShipmentUpdate" name="Process Shipment Update" camunda:delegateExpression="${shipmentTrackingDelegate}">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:endEvent id="EndEvent_ShipmentProcessed" name="Shipment Update Processed">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_ShipmentUpdated" targetRef="Task_ProcessShipmentUpdate" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_ProcessShipmentUpdate" targetRef="EndEvent_ShipmentProcessed" />
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="shipment-tracking-process">
+      <bpmndi:BPMNShape id="StartEvent_ShipmentUpdated_di" bpmnElement="StartEvent_ShipmentUpdated">
+        <dc:Bounds x="152" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="125" y="145" width="90" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ProcessShipmentUpdate_di" bpmnElement="Task_ProcessShipmentUpdate">
+        <dc:Bounds x="240" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_ShipmentProcessed_di" bpmnElement="EndEvent_ShipmentProcessed">
+        <dc:Bounds x="392" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="365" y="145" width="90" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="188" y="120" />
+        <di:waypoint x="240" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="340" y="120" />
+        <di:waypoint x="392" y="120" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
