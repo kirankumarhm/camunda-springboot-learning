@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.example</groupId>
+    <artifactId>signal-start-event</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+    <name>Signal Start Event - Camunda 7 Learning</name>
+    <description>Demonstrates Signal Start Events with broadcast (one-to-many) pattern in Camunda 7</description>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <spring-boot.version>3.5.5</spring-boot.version>
+        <camunda.version>7.24.0</camunda.version>
+    </properties>
+
+    <!--
+        DEPENDENCY MANAGEMENT (BOM = Bill of Materials)
+        ================================================
+        BOMs don't add any JARs to the project. They only define version numbers
+        centrally so that individual <dependency> entries below don't need <version> tags.
+
+        Think of it as: "If I ever use a Spring Boot or Camunda library, use THESE versions."
+    -->
+    <dependencyManagement>
+        <dependencies>
+            <!-- Spring Boot BOM: Manages versions for ALL Spring Boot starters and transitive deps -->
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <!-- Camunda BOM: Manages versions for ALL Camunda libraries (engine, REST, webapp, etc.) -->
+            <dependency>
+                <groupId>org.camunda.bpm</groupId>
+                <artifactId>camunda-bom</artifactId>
+                <version>${camunda.version}</version>
+                <scope>import</scope>
+                <type>pom</type>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <!--
+        ACTUAL DEPENDENCIES (these JARs are added to the project)
+        ==========================================================
+        Each dependency plays a specific role in making Camunda work with Spring Boot.
+    -->
+    <dependencies>
+        <!--
+            1. CAMUNDA REST API STARTER
+               What it does: Embeds the Camunda REST API into this Spring Boot app.
+               Why we need it: So we can call endpoints like:
+                 - POST /engine-rest/signal          → broadcast a signal
+                 - POST /engine-rest/process-definition/key/.../start → start a process
+                 - GET  /engine-rest/history/process-instance         → query history
+               What it includes: Camunda Process Engine + REST controllers + Spring Boot auto-configuration.
+        -->
+        <dependency>
+            <groupId>org.camunda.bpm.springboot</groupId>
+            <artifactId>camunda-bpm-spring-boot-starter-rest</artifactId>
+        </dependency>
+
+        <!--
+            2. CAMUNDA WEBAPP STARTER (Cockpit, Tasklist, Admin)
+               What it does: Embeds the Camunda web applications into this Spring Boot app.
+               Why we need it: So we can open http://localhost:8080/camunda/app/ and use:
+                 - Cockpit   → monitor running/completed process instances, inspect variables
+                 - Tasklist  → claim and complete user tasks (not used in this example)
+                 - Admin     → manage users, groups, authorizations
+               Note: This is the Community Edition webapp (free, open-source).
+        -->
+        <dependency>
+            <groupId>org.camunda.bpm.springboot</groupId>
+            <artifactId>camunda-bpm-spring-boot-starter-webapp</artifactId>
+        </dependency>
+
+        <!--
+            3. H2 DATABASE (in-file embedded database)
+               What it does: Provides a lightweight SQL database that runs inside the JVM.
+               Why we need it: Camunda needs a database to store:
+                 - Process definitions (deployed BPMNs)
+                 - Process instances (running workflows)
+                 - History (completed tasks, variable changes, audit trail)
+                 - Jobs (async tasks, timers)
+               In production, you'd replace this with PostgreSQL, MySQL, etc.
+               The database file is stored at: ./camunda-h2-database.mv.db
+        -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+        </dependency>
+
+        <!--
+            4. SPRING BOOT JDBC STARTER
+               What it does: Provides DataSource auto-configuration and connection pooling (HikariCP).
+               Why we need it: Camunda uses JDBC to talk to the H2 database.
+               Spring Boot auto-configures the DataSource from application.yaml properties.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!--
+                SPRING BOOT MAVEN PLUGIN
+                What it does: Packages the app as an executable JAR with embedded Tomcat.
+                Why we need it: So we can run the app with: mvn spring-boot:run
+                                or: java -jar target/signal-start-event-1.0.0.jar
+            -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>${spring-boot.version}</version>
+            </plugin>
+        </plugins>
+    </build>
+</project>
