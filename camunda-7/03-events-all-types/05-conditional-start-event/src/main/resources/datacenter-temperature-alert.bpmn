@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  id="Definitions_DcTempAlert"
+                  targetNamespace="http://bpmn.io/schema/bpmn"
+                  exporter="Camunda Modeler"
+                  exporterVersion="5.x">
+
+  <!--
+    Data Center Environmental Monitoring — Temperature Alert Process
+
+    External trigger:
+      IoT sensors publish readings via MQTT → a gateway microservice
+      calls POST /engine-rest/condition with {temperature, sensorId, location}.
+
+    Flow:
+      Conditional Start (temp > 27°C)
+        → Validate & Enrich sensor reading (front task)
+        → Exclusive Gateway: route by severity
+            ├─ WARNING (28-40°C): Send email to ops team
+            └─ DANGER  (>40°C):  Activate emergency cooling → Page on-call engineer
+        → Merge
+        → Record audit trail (back task)
+        → End
+  -->
+  <bpmn:process id="datacenter-temperature-alert"
+                name="Data Center Temperature Alert"
+                isExecutable="true"
+                camunda:historyTimeToLive="P5D">
+
+    <!-- ===== START EVENT ===== -->
+    <bpmn:startEvent id="startEvent_temperatureThresholdExceeded"
+                     name="Temperature Exceeds 27°C">
+      <bpmn:outgoing>flow_startToValidate</bpmn:outgoing>
+      <bpmn:conditionalEventDefinition id="condDef_temperatureThreshold">
+        <bpmn:condition xsi:type="bpmn:tFormalExpression">
+          ${temperature != null &amp;&amp; temperature &gt; 27}
+        </bpmn:condition>
+      </bpmn:conditionalEventDefinition>
+    </bpmn:startEvent>
+
+    <!-- ===== FRONT TASK: Validate & Enrich ===== -->
+    <bpmn:serviceTask id="serviceTask_validateSensorReading"
+                      name="Validate Sensor Reading"
+                      camunda:delegateExpression="${validateSensorReadingDelegate}">
+      <bpmn:incoming>flow_startToValidate</bpmn:incoming>
+      <bpmn:outgoing>flow_validateToGateway</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- ===== EXCLUSIVE GATEWAY: Route by Severity ===== -->
+    <bpmn:exclusiveGateway id="gateway_severityRouting"
+                           name="Severity?">
+      <bpmn:incoming>flow_validateToGateway</bpmn:incoming>
+      <bpmn:outgoing>flow_gatewayToWarning</bpmn:outgoing>
+      <bpmn:outgoing>flow_gatewayToDanger</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- ===== WARNING PATH ===== -->
+    <bpmn:serviceTask id="serviceTask_sendWarningEmail"
+                      name="Send Warning Email"
+                      camunda:delegateExpression="${sendWarningEmailDelegate}">
+      <bpmn:incoming>flow_gatewayToWarning</bpmn:incoming>
+      <bpmn:outgoing>flow_warningToMerge</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- ===== DANGER PATH ===== -->
+    <bpmn:serviceTask id="serviceTask_activateEmergencyCooling"
+                      name="Activate Emergency Cooling"
+                      camunda:delegateExpression="${activateEmergencyCoolingDelegate}">
+      <bpmn:incoming>flow_gatewayToDanger</bpmn:incoming>
+      <bpmn:outgoing>flow_coolingToPage</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="serviceTask_pageOnCallEngineer"
+                      name="Page On-Call Engineer"
+                      camunda:delegateExpression="${pageOnCallEngineerDelegate}">
+      <bpmn:incoming>flow_coolingToPage</bpmn:incoming>
+      <bpmn:outgoing>flow_pageToMerge</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- ===== MERGE GATEWAY ===== -->
+    <bpmn:exclusiveGateway id="gateway_merge"
+                           name="Merge">
+      <bpmn:incoming>flow_warningToMerge</bpmn:incoming>
+      <bpmn:incoming>flow_pageToMerge</bpmn:incoming>
+      <bpmn:outgoing>flow_mergeToAudit</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- ===== BACK TASK: Record Audit Trail ===== -->
+    <bpmn:serviceTask id="serviceTask_recordAuditTrail"
+                      name="Record Audit Trail"
+                      camunda:delegateExpression="${recordAuditTrailDelegate}">
+      <bpmn:incoming>flow_mergeToAudit</bpmn:incoming>
+      <bpmn:outgoing>flow_auditToEnd</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- ===== END EVENT ===== -->
+    <bpmn:endEvent id="endEvent_alertResolved"
+                   name="Alert Resolved">
+      <bpmn:incoming>flow_auditToEnd</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- ===== SEQUENCE FLOWS ===== -->
+    <bpmn:sequenceFlow id="flow_startToValidate"
+                       sourceRef="startEvent_temperatureThresholdExceeded"
+                       targetRef="serviceTask_validateSensorReading" />
+
+    <bpmn:sequenceFlow id="flow_validateToGateway"
+                       sourceRef="serviceTask_validateSensorReading"
+                       targetRef="gateway_severityRouting" />
+
+    <bpmn:sequenceFlow id="flow_gatewayToWarning"
+                       name="WARNING"
+                       sourceRef="gateway_severityRouting"
+                       targetRef="serviceTask_sendWarningEmail">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">
+        ${severity == 'WARNING'}
+      </bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:sequenceFlow id="flow_gatewayToDanger"
+                       name="DANGER"
+                       sourceRef="gateway_severityRouting"
+                       targetRef="serviceTask_activateEmergencyCooling">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">
+        ${severity == 'DANGER'}
+      </bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:sequenceFlow id="flow_coolingToPage"
+                       sourceRef="serviceTask_activateEmergencyCooling"
+                       targetRef="serviceTask_pageOnCallEngineer" />
+
+    <bpmn:sequenceFlow id="flow_warningToMerge"
+                       sourceRef="serviceTask_sendWarningEmail"
+                       targetRef="gateway_merge" />
+
+    <bpmn:sequenceFlow id="flow_pageToMerge"
+                       sourceRef="serviceTask_pageOnCallEngineer"
+                       targetRef="gateway_merge" />
+
+    <bpmn:sequenceFlow id="flow_mergeToAudit"
+                       sourceRef="gateway_merge"
+                       targetRef="serviceTask_recordAuditTrail" />
+
+    <bpmn:sequenceFlow id="flow_auditToEnd"
+                       sourceRef="serviceTask_recordAuditTrail"
+                       targetRef="endEvent_alertResolved" />
+  </bpmn:process>
+
+  <!-- ===== DIAGRAM LAYOUT ===== -->
+  <bpmndi:BPMNDiagram id="BPMNDiagram_DcTempAlert">
+    <bpmndi:BPMNPlane id="BPMNPlane_DcTempAlert"
+                      bpmnElement="datacenter-temperature-alert">
+
+      <!-- Start Event -->
+      <bpmndi:BPMNShape id="startEvent_temperatureThresholdExceeded_di"
+                        bpmnElement="startEvent_temperatureThresholdExceeded">
+        <dc:Bounds x="152" y="222" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="126" y="265" width="88" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Validate -->
+      <bpmndi:BPMNShape id="serviceTask_validateSensorReading_di"
+                        bpmnElement="serviceTask_validateSensorReading">
+        <dc:Bounds x="250" y="200" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <!-- Severity Gateway -->
+      <bpmndi:BPMNShape id="gateway_severityRouting_di"
+                        bpmnElement="gateway_severityRouting"
+                        isMarkerVisible="true">
+        <dc:Bounds x="415" y="215" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="420" y="191" width="44" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- WARNING: Send Email (upper path) -->
+      <bpmndi:BPMNShape id="serviceTask_sendWarningEmail_di"
+                        bpmnElement="serviceTask_sendWarningEmail">
+        <dc:Bounds x="540" y="100" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <!-- DANGER: Emergency Cooling (lower path) -->
+      <bpmndi:BPMNShape id="serviceTask_activateEmergencyCooling_di"
+                        bpmnElement="serviceTask_activateEmergencyCooling">
+        <dc:Bounds x="540" y="300" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <!-- DANGER: Page Engineer -->
+      <bpmndi:BPMNShape id="serviceTask_pageOnCallEngineer_di"
+                        bpmnElement="serviceTask_pageOnCallEngineer">
+        <dc:Bounds x="700" y="300" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <!-- Merge Gateway -->
+      <bpmndi:BPMNShape id="gateway_merge_di"
+                        bpmnElement="gateway_merge"
+                        isMarkerVisible="true">
+        <dc:Bounds x="855" y="215" width="50" height="50" />
+      </bpmndi:BPMNShape>
+
+      <!-- Audit -->
+      <bpmndi:BPMNShape id="serviceTask_recordAuditTrail_di"
+                        bpmnElement="serviceTask_recordAuditTrail">
+        <dc:Bounds x="970" y="200" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <!-- End Event -->
+      <bpmndi:BPMNShape id="endEvent_alertResolved_di"
+                        bpmnElement="endEvent_alertResolved">
+        <dc:Bounds x="1132" y="222" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1113" y="265" width="74" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Edges -->
+      <bpmndi:BPMNEdge id="flow_startToValidate_di" bpmnElement="flow_startToValidate">
+        <di:waypoint x="188" y="240" />
+        <di:waypoint x="250" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_validateToGateway_di" bpmnElement="flow_validateToGateway">
+        <di:waypoint x="350" y="240" />
+        <di:waypoint x="415" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_gatewayToWarning_di" bpmnElement="flow_gatewayToWarning">
+        <di:waypoint x="440" y="215" />
+        <di:waypoint x="440" y="140" />
+        <di:waypoint x="540" y="140" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_gatewayToDanger_di" bpmnElement="flow_gatewayToDanger">
+        <di:waypoint x="440" y="265" />
+        <di:waypoint x="440" y="340" />
+        <di:waypoint x="540" y="340" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_coolingToPage_di" bpmnElement="flow_coolingToPage">
+        <di:waypoint x="640" y="340" />
+        <di:waypoint x="700" y="340" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_warningToMerge_di" bpmnElement="flow_warningToMerge">
+        <di:waypoint x="640" y="140" />
+        <di:waypoint x="880" y="140" />
+        <di:waypoint x="880" y="215" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_pageToMerge_di" bpmnElement="flow_pageToMerge">
+        <di:waypoint x="800" y="340" />
+        <di:waypoint x="880" y="340" />
+        <di:waypoint x="880" y="265" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_mergeToAudit_di" bpmnElement="flow_mergeToAudit">
+        <di:waypoint x="905" y="240" />
+        <di:waypoint x="970" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_auditToEnd_di" bpmnElement="flow_auditToEnd">
+        <di:waypoint x="1070" y="240" />
+        <di:waypoint x="1132" y="240" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
