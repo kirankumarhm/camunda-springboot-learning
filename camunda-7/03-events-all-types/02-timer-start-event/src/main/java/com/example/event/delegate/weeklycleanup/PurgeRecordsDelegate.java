@@ -8,7 +8,15 @@ import org.springframework.stereotype.Component;
 
 /**
  * Purges expired records from the database.
- * Deletes abandoned carts and expired sessions identified in the previous step.
+ *
+ * <p>Real-world context: After identifying stale data, this delegate performs batch
+ * DELETE operations against the shopping cart and session tables. In production, this
+ * would use soft-delete first (marking records as deleted), then hard-delete after
+ * a grace period. The operation is typically wrapped in a database transaction with
+ * batch size limits to avoid long-running locks on high-traffic tables.</p>
+ *
+ * <p>Process variables read: {@code expiredCartCount}, {@code expiredSessionCount}</p>
+ * <p>Process variables set: {@code totalPurgedRecords}, {@code purgeStatus}</p>
  */
 @Component("purgeRecordsDelegate")
 public class PurgeRecordsDelegate implements JavaDelegate {
@@ -21,10 +29,10 @@ public class PurgeRecordsDelegate implements JavaDelegate {
         final int expiredSessions = (int) execution.getVariable("expiredSessionCount");
         final int totalPurged = expiredCarts + expiredSessions;
 
-        LOGGER.info("🗑️ Purging expired records...");
-        LOGGER.info("   Deleted {} abandoned carts", expiredCarts);
-        LOGGER.info("   Deleted {} expired sessions", expiredSessions);
-        LOGGER.info("   Total records purged: {}", totalPurged);
+        LOGGER.info("Purging expired records...");
+        LOGGER.info("  Deleted {} abandoned carts", expiredCarts);
+        LOGGER.info("  Deleted {} expired sessions", expiredSessions);
+        LOGGER.info("  Total records purged: {}", totalPurged);
 
         execution.setVariable("totalPurgedRecords", totalPurged);
         execution.setVariable("purgeStatus", "COMPLETED");

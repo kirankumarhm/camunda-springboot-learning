@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  id="Definitions_DailyTransactionReport"
+                  targetNamespace="http://bpmn.io/schema/bpmn"
+                  exporter="Camunda Modeler"
+                  exporterVersion="5.x">
+
+  <bpmn:process id="timer-daily-transaction-report"
+                name="Timer - Daily Transaction Report"
+                isExecutable="true"
+                camunda:historyTimeToLive="P5D"
+                camunda:versionTag="1.0.0">
+
+    <!-- Timer Start: Fires daily at midnight to generate compliance reports -->
+    <bpmn:startEvent id="TimerStartEvent_DailyMidnight" name="Daily at Midnight">
+      <bpmn:outgoing>SequenceFlow_StartToFetchTransactions</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerEventDef_DailyMidnight">
+        <bpmn:timeCycle xsi:type="bpmn:tFormalExpression">0 0 0 * * ?</bpmn:timeCycle>
+      </bpmn:timerEventDefinition>
+    </bpmn:startEvent>
+
+    <bpmn:serviceTask id="ServiceTask_FetchDailyTransactions"
+                      name="Fetch Daily Transactions"
+                      camunda:delegateExpression="${fetchTransactionsDelegate}">
+      <bpmn:incoming>SequenceFlow_StartToFetchTransactions</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_FetchToGenerateReport</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="ServiceTask_GenerateComplianceReport"
+                      name="Generate Compliance Report"
+                      camunda:delegateExpression="${generateReportDelegate}">
+      <bpmn:incoming>SequenceFlow_FetchToGenerateReport</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_GenerateToSendEmail</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="ServiceTask_SendReportEmail"
+                      name="Send Report via Email"
+                      camunda:delegateExpression="${sendReportEmailDelegate}">
+      <bpmn:incoming>SequenceFlow_GenerateToSendEmail</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_SendEmailToEnd</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:endEvent id="EndEvent_ReportDelivered" name="Report Delivered">
+      <bpmn:incoming>SequenceFlow_SendEmailToEnd</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="SequenceFlow_StartToFetchTransactions"
+                       sourceRef="TimerStartEvent_DailyMidnight"
+                       targetRef="ServiceTask_FetchDailyTransactions" />
+    <bpmn:sequenceFlow id="SequenceFlow_FetchToGenerateReport"
+                       sourceRef="ServiceTask_FetchDailyTransactions"
+                       targetRef="ServiceTask_GenerateComplianceReport" />
+    <bpmn:sequenceFlow id="SequenceFlow_GenerateToSendEmail"
+                       sourceRef="ServiceTask_GenerateComplianceReport"
+                       targetRef="ServiceTask_SendReportEmail" />
+    <bpmn:sequenceFlow id="SequenceFlow_SendEmailToEnd"
+                       sourceRef="ServiceTask_SendReportEmail"
+                       targetRef="EndEvent_ReportDelivered" />
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_DailyTransactionReport">
+    <bpmndi:BPMNPlane id="BPMNPlane_DailyTransactionReport" bpmnElement="timer-daily-transaction-report">
+      <bpmndi:BPMNShape id="TimerStartEvent_DailyMidnight_di" bpmnElement="TimerStartEvent_DailyMidnight">
+        <dc:Bounds x="152" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="129" y="145" width="82" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ServiceTask_FetchDailyTransactions_di" bpmnElement="ServiceTask_FetchDailyTransactions">
+        <dc:Bounds x="240" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ServiceTask_GenerateComplianceReport_di" bpmnElement="ServiceTask_GenerateComplianceReport">
+        <dc:Bounds x="400" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ServiceTask_SendReportEmail_di" bpmnElement="ServiceTask_SendReportEmail">
+        <dc:Bounds x="560" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_ReportDelivered_di" bpmnElement="EndEvent_ReportDelivered">
+        <dc:Bounds x="722" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="700" y="145" width="80" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="SequenceFlow_StartToFetchTransactions_di" bpmnElement="SequenceFlow_StartToFetchTransactions">
+        <di:waypoint x="188" y="120" />
+        <di:waypoint x="240" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_FetchToGenerateReport_di" bpmnElement="SequenceFlow_FetchToGenerateReport">
+        <di:waypoint x="340" y="120" />
+        <di:waypoint x="400" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_GenerateToSendEmail_di" bpmnElement="SequenceFlow_GenerateToSendEmail">
+        <di:waypoint x="500" y="120" />
+        <di:waypoint x="560" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_SendEmailToEnd_di" bpmnElement="SequenceFlow_SendEmailToEnd">
+        <di:waypoint x="660" y="120" />
+        <di:waypoint x="722" y="120" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

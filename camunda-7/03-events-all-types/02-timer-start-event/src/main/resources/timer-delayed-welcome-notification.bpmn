@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  id="Definitions_DelayedWelcomeNotification"
+                  targetNamespace="http://bpmn.io/schema/bpmn"
+                  exporter="Camunda Modeler"
+                  exporterVersion="5.x">
+
+  <bpmn:process id="timer-delayed-welcome-notification"
+                name="Timer - Delayed Welcome Notification"
+                isExecutable="true"
+                camunda:historyTimeToLive="P5D"
+                camunda:versionTag="1.0.0">
+
+    <!-- Timer Start: Fires once after 5-minute delay for post-signup onboarding -->
+    <bpmn:startEvent id="TimerStartEvent_DelayedWelcome" name="After 5 Minutes">
+      <bpmn:outgoing>SequenceFlow_StartToVerifyAccount</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerEventDef_DelayedWelcome">
+        <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">PT5M</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:startEvent>
+
+    <bpmn:serviceTask id="ServiceTask_VerifyAccountStatus"
+                      name="Verify Account Status"
+                      camunda:delegateExpression="${verifyAccountStatusDelegate}">
+      <bpmn:incoming>SequenceFlow_StartToVerifyAccount</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_VerifyToSendWelcome</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="ServiceTask_SendWelcomeEmail"
+                      name="Send Welcome Email"
+                      camunda:delegateExpression="${sendWelcomeEmailDelegate}">
+      <bpmn:incoming>SequenceFlow_VerifyToSendWelcome</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_SendWelcomeToEnd</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:endEvent id="EndEvent_NotificationSent" name="Notification Sent">
+      <bpmn:incoming>SequenceFlow_SendWelcomeToEnd</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="SequenceFlow_StartToVerifyAccount"
+                       sourceRef="TimerStartEvent_DelayedWelcome"
+                       targetRef="ServiceTask_VerifyAccountStatus" />
+    <bpmn:sequenceFlow id="SequenceFlow_VerifyToSendWelcome"
+                       sourceRef="ServiceTask_VerifyAccountStatus"
+                       targetRef="ServiceTask_SendWelcomeEmail" />
+    <bpmn:sequenceFlow id="SequenceFlow_SendWelcomeToEnd"
+                       sourceRef="ServiceTask_SendWelcomeEmail"
+                       targetRef="EndEvent_NotificationSent" />
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_DelayedWelcomeNotification">
+    <bpmndi:BPMNPlane id="BPMNPlane_DelayedWelcomeNotification" bpmnElement="timer-delayed-welcome-notification">
+      <bpmndi:BPMNShape id="TimerStartEvent_DelayedWelcome_di" bpmnElement="TimerStartEvent_DelayedWelcome">
+        <dc:Bounds x="152" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="132" y="145" width="76" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ServiceTask_VerifyAccountStatus_di" bpmnElement="ServiceTask_VerifyAccountStatus">
+        <dc:Bounds x="240" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ServiceTask_SendWelcomeEmail_di" bpmnElement="ServiceTask_SendWelcomeEmail">
+        <dc:Bounds x="400" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_NotificationSent_di" bpmnElement="EndEvent_NotificationSent">
+        <dc:Bounds x="562" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="540" y="145" width="80" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="SequenceFlow_StartToVerifyAccount_di" bpmnElement="SequenceFlow_StartToVerifyAccount">
+        <di:waypoint x="188" y="120" />
+        <di:waypoint x="240" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_VerifyToSendWelcome_di" bpmnElement="SequenceFlow_VerifyToSendWelcome">
+        <di:waypoint x="340" y="120" />
+        <di:waypoint x="400" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_SendWelcomeToEnd_di" bpmnElement="SequenceFlow_SendWelcomeToEnd">
+        <di:waypoint x="500" y="120" />
+        <di:waypoint x="562" y="120" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

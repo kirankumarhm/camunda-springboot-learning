@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  id="Definitions_MonthlyInvoiceProcessing"
+                  targetNamespace="http://bpmn.io/schema/bpmn"
+                  exporter="Camunda Modeler"
+                  exporterVersion="5.x">
+
+  <bpmn:process id="timer-monthly-invoice-processing"
+                name="Timer - Monthly Invoice Processing"
+                isExecutable="true"
+                camunda:historyTimeToLive="P5D"
+                camunda:versionTag="1.0.0">
+
+    <!-- Timer Start: Fires on the 1st of every month at 9 AM for SaaS billing -->
+    <bpmn:startEvent id="TimerStartEvent_MonthlyBilling" name="1st of Month 9 AM">
+      <bpmn:outgoing>SequenceFlow_StartToCalculateCharges</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerEventDef_MonthlyBilling">
+        <bpmn:timeCycle xsi:type="bpmn:tFormalExpression">0 0 9 1 * ?</bpmn:timeCycle>
+      </bpmn:timerEventDefinition>
+    </bpmn:startEvent>
+
+    <bpmn:serviceTask id="ServiceTask_CalculateMonthlyCharges"
+                      name="Calculate Monthly Charges"
+                      camunda:delegateExpression="${calculateChargesDelegate}">
+      <bpmn:incoming>SequenceFlow_StartToCalculateCharges</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_CalculateToGenerateInvoice</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="ServiceTask_GenerateInvoice"
+                      name="Generate Invoice"
+                      camunda:delegateExpression="${generateInvoiceDelegate}">
+      <bpmn:incoming>SequenceFlow_CalculateToGenerateInvoice</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_GenerateToSendReminder</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="ServiceTask_SendPaymentReminder"
+                      name="Send Payment Reminder"
+                      camunda:delegateExpression="${sendPaymentReminderDelegate}">
+      <bpmn:incoming>SequenceFlow_GenerateToSendReminder</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_SendReminderToEnd</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:endEvent id="EndEvent_InvoiceSent" name="Invoice Sent">
+      <bpmn:incoming>SequenceFlow_SendReminderToEnd</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="SequenceFlow_StartToCalculateCharges"
+                       sourceRef="TimerStartEvent_MonthlyBilling"
+                       targetRef="ServiceTask_CalculateMonthlyCharges" />
+    <bpmn:sequenceFlow id="SequenceFlow_CalculateToGenerateInvoice"
+                       sourceRef="ServiceTask_CalculateMonthlyCharges"
+                       targetRef="ServiceTask_GenerateInvoice" />
+    <bpmn:sequenceFlow id="SequenceFlow_GenerateToSendReminder"
+                       sourceRef="ServiceTask_GenerateInvoice"
+                       targetRef="ServiceTask_SendPaymentReminder" />
+    <bpmn:sequenceFlow id="SequenceFlow_SendReminderToEnd"
+                       sourceRef="ServiceTask_SendPaymentReminder"
+                       targetRef="EndEvent_InvoiceSent" />
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_MonthlyInvoiceProcessing">
+    <bpmndi:BPMNPlane id="BPMNPlane_MonthlyInvoiceProcessing" bpmnElement="timer-monthly-invoice-processing">
+      <bpmndi:BPMNShape id="TimerStartEvent_MonthlyBilling_di" bpmnElement="TimerStartEvent_MonthlyBilling">
+        <dc:Bounds x="152" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="127" y="145" width="86" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ServiceTask_CalculateMonthlyCharges_di" bpmnElement="ServiceTask_CalculateMonthlyCharges">
+        <dc:Bounds x="240" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ServiceTask_GenerateInvoice_di" bpmnElement="ServiceTask_GenerateInvoice">
+        <dc:Bounds x="400" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ServiceTask_SendPaymentReminder_di" bpmnElement="ServiceTask_SendPaymentReminder">
+        <dc:Bounds x="560" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_InvoiceSent_di" bpmnElement="EndEvent_InvoiceSent">
+        <dc:Bounds x="722" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="706" y="145" width="68" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="SequenceFlow_StartToCalculateCharges_di" bpmnElement="SequenceFlow_StartToCalculateCharges">
+        <di:waypoint x="188" y="120" />
+        <di:waypoint x="240" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_CalculateToGenerateInvoice_di" bpmnElement="SequenceFlow_CalculateToGenerateInvoice">
+        <di:waypoint x="340" y="120" />
+        <di:waypoint x="400" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_GenerateToSendReminder_di" bpmnElement="SequenceFlow_GenerateToSendReminder">
+        <di:waypoint x="500" y="120" />
+        <di:waypoint x="560" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_SendReminderToEnd_di" bpmnElement="SequenceFlow_SendReminderToEnd">
+        <di:waypoint x="660" y="120" />
+        <di:waypoint x="722" y="120" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  id="Definitions_WeeklyDataCleanup"
+                  targetNamespace="http://bpmn.io/schema/bpmn"
+                  exporter="Camunda Modeler"
+                  exporterVersion="5.x">
+
+  <bpmn:process id="timer-weekly-data-cleanup"
+                name="Timer - Weekly Data Cleanup"
+                isExecutable="true"
+                camunda:historyTimeToLive="P5D"
+                camunda:versionTag="1.0.0">
+
+    <!-- Timer Start: Fires every Sunday at 2 AM to purge stale e-commerce data -->
+    <bpmn:startEvent id="TimerStartEvent_SundayCleanup" name="Every Sunday 2 AM">
+      <bpmn:outgoing>SequenceFlow_StartToIdentifyExpired</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerEventDef_SundayCleanup">
+        <bpmn:timeCycle xsi:type="bpmn:tFormalExpression">0 0 2 ? * SUN</bpmn:timeCycle>
+      </bpmn:timerEventDefinition>
+    </bpmn:startEvent>
+
+    <bpmn:serviceTask id="ServiceTask_IdentifyExpiredData"
+                      name="Identify Expired Data"
+                      camunda:delegateExpression="${identifyExpiredDataDelegate}">
+      <bpmn:incoming>SequenceFlow_StartToIdentifyExpired</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_IdentifyToPurge</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="ServiceTask_PurgeExpiredRecords"
+                      name="Purge Expired Records"
+                      camunda:delegateExpression="${purgeRecordsDelegate}">
+      <bpmn:incoming>SequenceFlow_IdentifyToPurge</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_PurgeToLogSummary</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="ServiceTask_LogCleanupSummary"
+                      name="Log Cleanup Summary"
+                      camunda:delegateExpression="${logCleanupSummaryDelegate}">
+      <bpmn:incoming>SequenceFlow_PurgeToLogSummary</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_LogSummaryToEnd</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:endEvent id="EndEvent_CleanupComplete" name="Cleanup Complete">
+      <bpmn:incoming>SequenceFlow_LogSummaryToEnd</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="SequenceFlow_StartToIdentifyExpired"
+                       sourceRef="TimerStartEvent_SundayCleanup"
+                       targetRef="ServiceTask_IdentifyExpiredData" />
+    <bpmn:sequenceFlow id="SequenceFlow_IdentifyToPurge"
+                       sourceRef="ServiceTask_IdentifyExpiredData"
+                       targetRef="ServiceTask_PurgeExpiredRecords" />
+    <bpmn:sequenceFlow id="SequenceFlow_PurgeToLogSummary"
+                       sourceRef="ServiceTask_PurgeExpiredRecords"
+                       targetRef="ServiceTask_LogCleanupSummary" />
+    <bpmn:sequenceFlow id="SequenceFlow_LogSummaryToEnd"
+                       sourceRef="ServiceTask_LogCleanupSummary"
+                       targetRef="EndEvent_CleanupComplete" />
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_WeeklyDataCleanup">
+    <bpmndi:BPMNPlane id="BPMNPlane_WeeklyDataCleanup" bpmnElement="timer-weekly-data-cleanup">
+      <bpmndi:BPMNShape id="TimerStartEvent_SundayCleanup_di" bpmnElement="TimerStartEvent_SundayCleanup">
+        <dc:Bounds x="152" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="127" y="145" width="86" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ServiceTask_IdentifyExpiredData_di" bpmnElement="ServiceTask_IdentifyExpiredData">
+        <dc:Bounds x="240" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ServiceTask_PurgeExpiredRecords_di" bpmnElement="ServiceTask_PurgeExpiredRecords">
+        <dc:Bounds x="400" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ServiceTask_LogCleanupSummary_di" bpmnElement="ServiceTask_LogCleanupSummary">
+        <dc:Bounds x="560" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_CleanupComplete_di" bpmnElement="EndEvent_CleanupComplete">
+        <dc:Bounds x="722" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="700" y="145" width="80" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="SequenceFlow_StartToIdentifyExpired_di" bpmnElement="SequenceFlow_StartToIdentifyExpired">
+        <di:waypoint x="188" y="120" />
+        <di:waypoint x="240" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_IdentifyToPurge_di" bpmnElement="SequenceFlow_IdentifyToPurge">
+        <di:waypoint x="340" y="120" />
+        <di:waypoint x="400" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_PurgeToLogSummary_di" bpmnElement="SequenceFlow_PurgeToLogSummary">
+        <di:waypoint x="500" y="120" />
+        <di:waypoint x="560" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_LogSummaryToEnd_di" bpmnElement="SequenceFlow_LogSummaryToEnd">
+        <di:waypoint x="660" y="120" />
+        <di:waypoint x="722" y="120" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

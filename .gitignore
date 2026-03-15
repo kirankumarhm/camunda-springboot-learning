@@ -1,0 +1,21 @@
+# Java bytecode
+*.class
+
+# Maven/Gradle build output
+**/target/
+**/build/
+
+# Logs
+*.log
+
+# IDE and editor files
+.idea/
+*.iml
+.project
+.classpath
+.settings/
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db

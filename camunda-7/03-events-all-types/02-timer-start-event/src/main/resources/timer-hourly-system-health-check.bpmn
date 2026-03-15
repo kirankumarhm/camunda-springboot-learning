@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  id="Definitions_HourlySystemHealthCheck"
+                  targetNamespace="http://bpmn.io/schema/bpmn"
+                  exporter="Camunda Modeler"
+                  exporterVersion="5.x">
+
+  <bpmn:process id="timer-hourly-system-health-check"
+                name="Timer - Hourly System Health Check"
+                isExecutable="true"
+                camunda:historyTimeToLive="P5D"
+                camunda:versionTag="1.0.0">
+
+    <!-- Timer Start: Fires every hour to monitor cloud infrastructure health -->
+    <bpmn:startEvent id="TimerStartEvent_HourlyCheck" name="Every Hour">
+      <bpmn:outgoing>SequenceFlow_StartToCheckApi</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerEventDef_HourlyCheck">
+        <bpmn:timeCycle xsi:type="bpmn:tFormalExpression">0 0 * * * ?</bpmn:timeCycle>
+      </bpmn:timerEventDefinition>
+    </bpmn:startEvent>
+
+    <bpmn:serviceTask id="ServiceTask_CheckApiEndpointStatus"
+                      name="Check API Endpoint Status"
+                      camunda:delegateExpression="${checkApiStatusDelegate}">
+      <bpmn:incoming>SequenceFlow_StartToCheckApi</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_CheckApiToCheckDb</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="ServiceTask_CheckDatabaseStatus"
+                      name="Check Database Status"
+                      camunda:delegateExpression="${checkDbStatusDelegate}">
+      <bpmn:incoming>SequenceFlow_CheckApiToCheckDb</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_CheckDbToLogResults</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="ServiceTask_LogHealthCheckResults"
+                      name="Log Health Check Results"
+                      camunda:delegateExpression="${logHealthResultsDelegate}">
+      <bpmn:incoming>SequenceFlow_CheckDbToLogResults</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_LogResultsToEnd</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:endEvent id="EndEvent_HealthCheckDone" name="Health Check Done">
+      <bpmn:incoming>SequenceFlow_LogResultsToEnd</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="SequenceFlow_StartToCheckApi"
+                       sourceRef="TimerStartEvent_HourlyCheck"
+                       targetRef="ServiceTask_CheckApiEndpointStatus" />
+    <bpmn:sequenceFlow id="SequenceFlow_CheckApiToCheckDb"
+                       sourceRef="ServiceTask_CheckApiEndpointStatus"
+                       targetRef="ServiceTask_CheckDatabaseStatus" />
+    <bpmn:sequenceFlow id="SequenceFlow_CheckDbToLogResults"
+                       sourceRef="ServiceTask_CheckDatabaseStatus"
+                       targetRef="ServiceTask_LogHealthCheckResults" />
+    <bpmn:sequenceFlow id="SequenceFlow_LogResultsToEnd"
+                       sourceRef="ServiceTask_LogHealthCheckResults"
+                       targetRef="EndEvent_HealthCheckDone" />
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_HourlySystemHealthCheck">
+    <bpmndi:BPMNPlane id="BPMNPlane_HourlySystemHealthCheck" bpmnElement="timer-hourly-system-health-check">
+      <bpmndi:BPMNShape id="TimerStartEvent_HourlyCheck_di" bpmnElement="TimerStartEvent_HourlyCheck">
+        <dc:Bounds x="152" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="141" y="145" width="58" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ServiceTask_CheckApiEndpointStatus_di" bpmnElement="ServiceTask_CheckApiEndpointStatus">
+        <dc:Bounds x="240" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ServiceTask_CheckDatabaseStatus_di" bpmnElement="ServiceTask_CheckDatabaseStatus">
+        <dc:Bounds x="400" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ServiceTask_LogHealthCheckResults_di" bpmnElement="ServiceTask_LogHealthCheckResults">
+        <dc:Bounds x="560" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_HealthCheckDone_di" bpmnElement="EndEvent_HealthCheckDone">
+        <dc:Bounds x="722" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="695" y="145" width="90" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="SequenceFlow_StartToCheckApi_di" bpmnElement="SequenceFlow_StartToCheckApi">
+        <di:waypoint x="188" y="120" />
+        <di:waypoint x="240" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_CheckApiToCheckDb_di" bpmnElement="SequenceFlow_CheckApiToCheckDb">
+        <di:waypoint x="340" y="120" />
+        <di:waypoint x="400" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_CheckDbToLogResults_di" bpmnElement="SequenceFlow_CheckDbToLogResults">
+        <di:waypoint x="500" y="120" />
+        <di:waypoint x="560" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_LogResultsToEnd_di" bpmnElement="SequenceFlow_LogResultsToEnd">
+        <di:waypoint x="660" y="120" />
+        <di:waypoint x="722" y="120" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

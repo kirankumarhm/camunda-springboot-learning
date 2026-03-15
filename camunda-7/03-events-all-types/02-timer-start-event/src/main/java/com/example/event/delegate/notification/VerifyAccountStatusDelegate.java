@@ -1,17 +1,30 @@
 package com.example.event.delegate.notification;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
 import org.camunda.bpm.engine.delegate.DelegateExecution;
 import org.camunda.bpm.engine.delegate.JavaDelegate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-
 /**
- * Verifies the user's account activation status.
- * Checks if the account is active and email is verified before sending welcome notification.
+ * Verifies the user's account activation status before sending a welcome email.
+ *
+ * <p>Real-world context: After a user signs up on a platform (e.g., an online
+ * marketplace or SaaS product), there is typically a delay for email verification
+ * and account provisioning. This delegate checks whether the account has been
+ * activated and the email address verified within the 5-minute grace period.
+ * If the account is not yet active, the welcome email should be skipped to
+ * avoid confusing the user.</p>
+ *
+ * <p>Process variables set:</p>
+ * <ul>
+ *   <li>{@code accountActive} - Whether the account has been activated</li>
+ *   <li>{@code emailVerified} - Whether the email address has been confirmed</li>
+ *   <li>{@code verificationTime} - Timestamp of the verification check</li>
+ * </ul>
  */
 @Component("verifyAccountStatusDelegate")
 public class VerifyAccountStatusDelegate implements JavaDelegate {
@@ -25,9 +38,9 @@ public class VerifyAccountStatusDelegate implements JavaDelegate {
         final boolean accountActive = true;
         final boolean emailVerified = true;
 
-        LOGGER.info("🔍 Verifying account status at: {}", timestamp);
-        LOGGER.info("   Account Active: {}", accountActive);
-        LOGGER.info("   Email Verified: {}", emailVerified);
+        LOGGER.info("Verifying account status at: {}", timestamp);
+        LOGGER.info("  Account Active: {}", accountActive);
+        LOGGER.info("  Email Verified: {}", emailVerified);
 
         execution.setVariable("accountActive", accountActive);
         execution.setVariable("emailVerified", emailVerified);
